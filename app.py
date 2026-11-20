@@ -22,15 +22,15 @@ def render():
         out = os.path.join(tmp, "reel.mp4")
         # download only the needed section
         subprocess.run([
-            "yt-dlp", "-f", "bv*[height<=720]+ba/b[height<=720]",
-            "--download-sections", f"*{start}-{end}", "--force-keyframes-at-cuts",
+            "yt-dlp", "-f", "bv*[vcodec^=avc1][height<=720]+ba[ext=m4a]/b[vcodec^=avc1][height<=720]/b[height<=720]", "--js-runtimes", "node",
+            "--download-sections", f"*{start}-{end}",
             "--merge-output-format", "mp4", "-o", raw, url], check=True, timeout=600)
         font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
         # blurred 9:16 background + sharp centred foreground + slow zoom punch-in + hook caption
         fc = (
             "[0:v]split=2[a][b];"
-            "[a]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=30:5[bg];"
-            "[b]scale=720:-2,zoompan=z='min(1.0+0.0008*on,1.12)':d=1:s=720x405:fps=30[fg];"
+            "[a]scale=72:128:force_original_aspect_ratio=increase,crop=72:128,boxblur=4:2,scale=720:1280[bg];"
+            "[b]scale=792:-2,crop=720:446[fg];"
             "[bg][fg]overlay=(W-w)/2:(H-h)/2[v1];"
             f"[v1]drawtext=fontfile={font}:text='{hook}':fontsize=44:fontcolor=white:"
             "borderw=4:bordercolor=black:x=(w-text_w)/2:y=160:enable='between(t,0,4)',"
@@ -39,7 +39,7 @@ def render():
         subprocess.run([
             "ffmpeg", "-y", "-i", raw, "-filter_complex", fc, "-map", "[v]", "-map", "0:a?",
             "-af", f"loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=in:d=0.2,afade=t=out:st={dur-0.4}:d=0.4",
-            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-preset", "ultrafast", "-threads", "1", "-crf", "20", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", "-r", "30", out],
             check=True, timeout=900)
         resp = send_file(out, mimetype="video/mp4", download_name="reel.mp4")
